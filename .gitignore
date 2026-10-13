@@ -1,0 +1,11 @@
+@'
+venv/
+.venv/
+__pycache__/
+*.pyc
+staticfiles/
+.env
+.DS_Store
+
+# Keep db.sqlite3 only if it contains no sensitive data
+'@ | Set-Content -Path .gitignore

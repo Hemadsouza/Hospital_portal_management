@@ -1,0 +1,60 @@
+{% extends "appointments/base.html" %}
+{% block title %}Staff console{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+  <h1 class="page-title mb-1">Appointment requests</h1>
+  <p class="text-secondary mb-0">Confirm or cancel requests, mark visits completed, then add the medical report.</p>
+</div>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+  <ul class="nav nav-pills status-tabs">
+    {% for code, label, count in tabs %}
+      <li class="nav-item">
+        <a class="nav-link {% if status == code %}active{% endif %}" href="?status={{ code }}{% if query %}&q={{ query|urlencode }}{% endif %}">{{ label }} <span class="count">{{ count }}</span></a>
+      </li>
+    {% endfor %}
+  </ul>
+  <form method="get" class="d-flex gap-2" role="search">
+    <input type="hidden" name="status" value="{{ status }}">
+    <input type="search" name="q" value="{{ query }}" class="form-control" placeholder="Patient, doctor or reason" aria-label="Search appointments">
+    <button class="btn btn-outline-secondary" type="submit">Search</button>
+  </form>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-portal align-middle mb-0">
+      <thead><tr><th>When</th><th>Patient</th><th>Doctor</th><th>Reason</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
+      <tbody>
+        {% for appointment in appointments %}
+          <tr>
+            <td class="text-nowrap">{{ appointment.date|date:"d M Y" }}<div class="text-secondary small">{{ appointment.slot_label }}</div></td>
+            <td>{{ appointment.patient.full_name }}<div class="text-secondary small">{{ appointment.patient.phone }}</div></td>
+            <td>{{ appointment.doctor.name }}<div class="text-secondary small">{{ appointment.doctor.get_department_display }}</div></td>
+            <td class="reason-cell">{{ appointment.reason }}</td>
+            <td>{% include "appointments/partials/_status_badge.html" %}</td>
+            <td class="text-end text-nowrap">
+              {% for value, label in appointment.next_statuses %}
+                <form method="post" action="{% url 'staff_update_status' appointment.pk %}" class="d-inline">
+                  {% csrf_token %}
+                  <input type="hidden" name="status" value="{{ value }}">
+                  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                  <button type="submit" class="btn btn-sm {% if value == 'CANCELLED' %}btn-outline-danger{% elif value == 'CONFIRMED' %}btn-success{% else %}btn-outline-primary{% endif %}">
+                    {% if value == 'CONFIRMED' %}Confirm{% elif value == 'CANCELLED' %}Cancel{% else %}Mark completed{% endif %}
+                  </button>
+                </form>
+              {% endfor %}
+              {% if appointment.status == 'COMPLETED' %}
+                <a class="btn btn-sm btn-outline-secondary" href="{% url 'staff_report' appointment.pk %}">{% if appointment.report %}Edit report{% else %}Add report{% endif %}</a>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6" class="text-center text-secondary py-5">No appointments match this view.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: hospital-appointment-portal-demo
+    runtime: python
+    rootDir: .
+    plan: free
+    buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --no-input && python manage.py migrate && python create_superuser.py"
+    startCommand: "python manage.py migrate && python create_superuser.py && gunicorn hospital_portal.wsgi:application"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: WEB_CONCURRENCY
+        value: 2
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DJANGO_SUPERUSER_USERNAME
+        value: admin
+      - key: DJANGO_SUPERUSER_EMAIL
+        value: admin@example.com
+      - key: DJANGO_SUPERUSER_PASSWORD
+        sync: false          # Render asks you for this value when you create the Blueprint
+      - key: DEMO_USER_PASSWORD
+        sync: false          # password for the demo 'patient', 'rahul' and 'staff' logins
+      - key: SEED_DEMO_DATA
+        value: "true"        # reloads demo data because SQLite resets on Render's free plan

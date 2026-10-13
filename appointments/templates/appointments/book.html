@@ -1,0 +1,64 @@
+{% extends "appointments/base.html" %}
+{% load static %}
+{% block title %}Book an appointment{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-xl-8">
+    <h1 class="page-title">Book an appointment</h1>
+    <p class="text-secondary">Choose a doctor and date, then tap an open time. You can book up to {{ max_days }} days ahead.</p>
+
+    <form method="post" novalidate id="bookingForm" data-slots-url="{% url 'slots_api' %}" class="card form-card">
+      {% csrf_token %}
+      <div class="card-body">
+        {% if form.non_field_errors %}
+          <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        <div class="row g-3">
+          <div class="col-md-7">
+            <label for="{{ form.doctor.id_for_label }}" class="form-label">Doctor</label>
+            {{ form.doctor }}
+            {% for e in form.doctor.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
+          </div>
+          <div class="col-md-5">
+            <label for="{{ form.date.id_for_label }}" class="form-label">Date</label>
+            {{ form.date }}
+            {% for e in form.date.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
+            <span class="form-label mb-0" id="slotLabel">Time slot</span>
+            <div class="slot-legend" aria-hidden="true">
+              <span><i class="swatch swatch-open"></i>Available</span>
+              <span><i class="swatch swatch-booked"></i>Booked</span>
+              <span><i class="swatch swatch-chosen"></i>Your pick</span>
+            </div>
+          </div>
+          <div id="slotGrid" class="slot-grid" role="group" aria-labelledby="slotLabel"></div>
+          <p id="slotMessage" class="slot-message" aria-live="polite">Select a doctor and a date to see open times.</p>
+          {{ form.time_slot }}
+          {% for e in form.time_slot.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
+        </div>
+
+        <div class="mt-4">
+          <label for="{{ form.reason.id_for_label }}" class="form-label">Reason for visit</label>
+          {{ form.reason }}
+          {% for e in form.reason.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
+        </div>
+      </div>
+      <div class="card-footer d-flex flex-wrap gap-2 justify-content-between align-items-center">
+        <span class="text-secondary small" id="bookingSummary">Your request starts as Pending until staff confirm it.</span>
+        <div class="d-flex gap-2">
+          <a href="{% url 'doctor_list' %}" class="btn btn-outline-secondary">Back to doctors</a>
+          <button type="submit" class="btn btn-primary" id="submitBtn">Request appointment</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}<script src="{% static 'js/booking.js' %}"></script>{% endblock %}

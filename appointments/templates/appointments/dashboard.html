@@ -1,0 +1,123 @@
+{% extends "appointments/base.html" %}
+{% block title %}My appointments{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+  <div>
+    <h1 class="page-title mb-1">Hello, {{ patient.full_name }}</h1>
+    <p class="text-secondary mb-0">Your upcoming visits and past appointment history.</p>
+  </div>
+  <a href="{% url 'book' %}" class="btn btn-primary">Book a new appointment</a>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3"><div class="stat"><span class="stat-num">{{ stats.total }}</span><span class="stat-label">All appointments</span></div></div>
+  <div class="col-6 col-md-3"><div class="stat"><span class="stat-num">{{ stats.pending }}</span><span class="stat-label">Awaiting confirmation</span></div></div>
+  <div class="col-6 col-md-3"><div class="stat"><span class="stat-num">{{ stats.confirmed }}</span><span class="stat-label">Confirmed</span></div></div>
+  <div class="col-6 col-md-3"><div class="stat"><span class="stat-num">{{ stats.completed }}</span><span class="stat-label">Completed</span></div></div>
+</div>
+
+<h2 class="section-title">Upcoming</h2>
+<div class="row g-3 mb-5">
+  {% for appointment in upcoming %}
+    <div class="col-lg-6">
+      <div class="card appt-card">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start gap-2">
+            <div>
+              <div class="appt-when">{{ appointment.date|date:"D, d M Y" }} &middot; {{ appointment.slot_label }}</div>
+              <div class="fw-semibold">{{ appointment.doctor.name }}</div>
+              <div class="text-secondary small">{{ appointment.doctor.specialization }}</div>
+            </div>
+            {% include "appointments/partials/_status_badge.html" %}
+          </div>
+          <p class="mt-3 mb-3 small">{{ appointment.reason }}</p>
+          {% if appointment.patient_can_cancel %}
+            <button type="button" class="btn btn-sm btn-outline-danger"
+                    data-bs-toggle="modal" data-bs-target="#cancelModal"
+                    data-action="{% url 'cancel_appointment' appointment.pk %}"
+                    data-summary="{{ appointment.doctor.name }} on {{ appointment.date|date:'d M Y' }} at {{ appointment.slot_label }}">Cancel appointment</button>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  {% empty %}
+    <div class="col-12"><div class="empty-state"><h3 class="h5">Nothing scheduled</h3><p class="mb-3 text-secondary">Book a visit and it will appear here.</p><a href="{% url 'doctor_list' %}" class="btn btn-primary btn-sm">Browse doctors</a></div></div>
+  {% endfor %}
+</div>
+
+<h2 class="section-title">Past and cancelled</h2>
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-portal align-middle mb-0">
+      <thead><tr><th>Date</th><th>Doctor</th><th>Reason</th><th>Status</th><th class="text-end">Report</th></tr></thead>
+      <tbody>
+        {% for appointment in past %}
+          <tr>
+            <td class="text-nowrap">{{ appointment.date|date:"d M Y" }}<div class="text-secondary small">{{ appointment.slot_label }}</div></td>
+            <td>{{ appointment.doctor.name }}<div class="text-secondary small">{{ appointment.doctor.get_department_display }}</div></td>
+            <td class="reason-cell">{{ appointment.reason }}</td>
+            <td>{% include "appointments/partials/_status_badge.html" %}</td>
+            <td class="text-end">
+              {% if appointment.report %}
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#reportModal{{ appointment.pk }}">View report</button>
+              {% else %}<span class="text-secondary small">&mdash;</span>{% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5" class="text-center text-secondary py-4">No past appointments yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% for appointment in past %}{% if appointment.report %}
+<div class="modal fade" id="reportModal{{ appointment.pk }}" tabindex="-1" aria-labelledby="reportLabel{{ appointment.pk }}" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title h5" id="reportLabel{{ appointment.pk }}">Medical report &middot; {{ appointment.date|date:"d M Y" }}</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-secondary">{{ appointment.doctor.name }}, {{ appointment.doctor.specialization }}</p>
+        <h3 class="h6">Diagnosis</h3><p>{{ appointment.report.diagnosis }}</p>
+        {% if appointment.report.prescription %}<h3 class="h6">Prescription</h3><p>{{ appointment.report.prescription|linebreaksbr }}</p>{% endif %}
+        {% if appointment.report.notes %}<h3 class="h6">Doctor's notes</h3><p>{{ appointment.report.notes|linebreaksbr }}</p>{% endif %}
+        {% if appointment.report.follow_up_date %}<h3 class="h6">Follow-up</h3><p class="mb-0">{{ appointment.report.follow_up_date|date:"D, d M Y" }}</p>{% endif %}
+      </div>
+      <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button></div>
+    </div>
+  </div>
+</div>
+{% endif %}{% endfor %}
+
+<!-- Cancel confirmation modal -->
+<div class="modal fade" id="cancelModal" tabindex="-1" aria-labelledby="cancelModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <form method="post" class="modal-content" id="cancelForm" action="">
+      {% csrf_token %}
+      <div class="modal-header">
+        <h2 class="modal-title h5" id="cancelModalLabel">Cancel this appointment?</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body"><p class="mb-0" id="cancelSummary"></p></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Keep appointment</button>
+        <button type="submit" class="btn btn-danger">Yes, cancel it</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.getElementById('cancelModal').addEventListener('show.bs.modal', function (event) {
+    var btn = event.relatedTarget;
+    document.getElementById('cancelForm').action = btn.getAttribute('data-action');
+    document.getElementById('cancelSummary').textContent = btn.getAttribute('data-summary') + ' will be cancelled and the time slot released.';
+  });
+</script>
+{% endblock %}
